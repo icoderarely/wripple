@@ -12,21 +12,24 @@ const sesClient = new SESClient({
   },
 });
 
-const sendEmail = async (toEmail, emailSubject, emailBody) => {
+const sendEmail = async (toEmail, emailSubject, emailBody, emailHtml) => {
   try {
     const params = {
       Source: process.env.AWS_EMAIL,
-      Destination$: { ToAddress: [toEmail] },
+      Destination: { ToAddresses: [toEmail] },
       Message: {
         Subject: { Data: emailSubject },
-        Body: { Text: { Data: emailBody } },
+        Body: {
+          Text: { Data: emailBody },
+          Html: emailHtml ? { Data: emailHtml } : undefined,
+        },
       },
     };
 
     const command = new SendEmailCommand(params);
     const response = await sesClient.send(command);
 
-    console.log("email sent successfully! message id: ", Response.MessageId);
+    console.log("email sent successfully! message id: ", response.MessageId);
   } catch (error) {
     console.log("amazon ses error:", error);
   }

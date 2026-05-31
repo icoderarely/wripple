@@ -7,6 +7,7 @@ const router = express.Router();
 
 const User = require("../models/user.model");
 const authMiddleware = require("../middlewares/auth.middleware");
+const sendEmail = require("../config/amazon-ses");
 
 const ok = (res, data) => res.json({ success: true, data });
 const fail = (res, status, message, extra = {}) =>
@@ -195,6 +196,22 @@ router.post("/request-password-reset", async (req, res) => {
   await user.save();
 
   // NOTE: sending email functionality
+  const resetUrl = `https://wripple.navcodes.com/reset-password?resetToken=${resetToken}`;
+  const emailSubject = "Password Reset Request for your wripple account";
+  const emailBody = `Click this link to reset your password: ${resetUrl}`;
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
+      <h2 style="margin: 0 0 12px;">Reset your password</h2>
+      <p style="margin: 0 0 16px;">We received a request to reset your password. Click the button below to continue.</p>
+      <p style="margin: 0 0 24px;">
+        <a href="${resetUrl}" style="display: inline-block; padding: 12px 18px; background: #1e2a38; color: #fff; text-decoration: none; border-radius: 6px;">Reset Password</a>
+      </p>
+      <p style="margin: 0 0 8px;">If the button does not work, use this link:</p>
+      <p style="margin: 0 0 16px;"><a href="${resetUrl}">${resetUrl}</a></p>
+      <p style="margin: 0; color: #666; font-size: 12px;">If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+  sendEmail(user.email, emailSubject, emailBody, emailHtml);
 
   return ok(res, {
     message: "email will be sent if there exist a user",
