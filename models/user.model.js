@@ -27,11 +27,36 @@ const userSchema = mongoose.Schema(
       default: "active",
     },
     isVerified: { type: Boolean, default: false },
+    isPrivate: { type: Boolean, default: false },
     gender: { type: String, enum: ["male", "female"] },
     phoneNumber: { type: String, match: "/^[0-9]{10}$/" },
     refreshToken: { type: String },
     resetToken: { type: String },
     resetTokenExpires: { type: Date },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    incomingFollowRequests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    outgoingFollowRequests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
