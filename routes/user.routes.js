@@ -10,13 +10,7 @@ const User = require("../models/user.model");
 const authMiddleware = require("../middlewares/auth.middleware");
 const sendEmail = require("../config/amazon-ses");
 
-const ok = (res, message, data, status = 200) => {
-  const payload = { success: true, message };
-  if (data !== undefined) payload.data = data;
-  return res.status(status).json(payload);
-};
-const fail = (res, status, message, extra = {}) =>
-  res.status(status).json({ success: false, message, ...extra });
+const { ok, fail } = require("../utils/response");
 
 const validateObjectId = (paramName) => (req, res, next, value) => {
   if (!mongoose.isValidObjectId(value)) {

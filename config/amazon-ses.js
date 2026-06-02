@@ -1,21 +1,23 @@
+const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
 const {
-  SESClient,
-  Destination$,
-  SendEmailCommand,
-} = require("@aws-sdk/client-ses");
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_EMAIL,
+} = require("./env");
 
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION,
+  region: AWS_REGION,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
   },
 });
 
 const sendEmail = async (toEmail, emailSubject, emailBody, emailHtml) => {
   try {
     const params = {
-      Source: process.env.AWS_EMAIL,
+      Source: AWS_EMAIL,
       Destination: { ToAddresses: [toEmail] },
       Message: {
         Subject: { Data: emailSubject },
