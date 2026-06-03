@@ -5,7 +5,11 @@ const router = express.Router();
 
 const authMiddleware = require("../middlewares/auth.middleware");
 const postUpload = require("../config/multer");
-const { uploadImageToS3, fetchImageFromS3 } = require("../config/amazon-s3");
+const {
+  uploadImageToS3,
+  fetchImageFromS3,
+  deleteImageFromS3,
+} = require("../config/amazon-s3");
 const { ok, fail } = require("../utils/response");
 const Post = require("../models/post.model");
 const User = require("../models/user.model");
@@ -77,6 +81,30 @@ router.get("/:postId", authMiddleware, async (req, res) => {
   const key = postData.media[0].key;
   const url = await fetchImageFromS3(key);
   return ok(res, "Fetched post", url);
+});
+
+router.delete("/:postId", authMiddleware, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return fail(res, 404, "Post not found");
+    }
+
+    if (req.user._id.toString() !== post.user.toString()) {
+      return fail(res, 403, "Unauthorized access");
+    }
+
+    await Promise.all(post.media.map((media) => deleteImageFromS3(media.key)));
+
+    await post.deleteOne();
+
+    return ok(res, "Post deleted successfully");
+  } catch (error) {
+    console.error(error);
+    return fail(res, 500, "Internal server error");
+  }
 });
 
 module.exports = router;
