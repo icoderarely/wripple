@@ -36,3 +36,5 @@ pids/
 
 # Misc
 *.tgz
+
+*.pem

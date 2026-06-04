@@ -8,7 +8,7 @@ const router = express.Router();
 
 const User = require("../models/user.model");
 const authMiddleware = require("../middlewares/auth.middleware");
-const sendEmail = require("../config/amazon-ses");
+const sendEmail = require("../config/aws-ses");
 
 const { ok, fail } = require("../utils/response");
 

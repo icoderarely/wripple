@@ -16,6 +16,10 @@ const schema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string(),
   AWS_REGION: z.string(),
   AWS_BUCKET_NAME: z.string(),
+  AWS_CDN_URL: z.string(),
+  CLOUDFRONT_KEY_PAIR_ID: z.string(),
+  CLOUDFRONT_PRIVATE_KEY_PATH: z.string(),
+  CLOUDFRONT_DISTRIBUTION_ID: z.string(),
 });
 
 module.exports = schema.parse(process.env);

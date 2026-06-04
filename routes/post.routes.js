@@ -9,10 +9,11 @@ const {
   uploadImageToS3,
   fetchImageFromS3,
   deleteImageFromS3,
-} = require("../config/amazon-s3");
+} = require("../config/aws-s3");
 const { ok, fail } = require("../utils/response");
 const Post = require("../models/post.model");
 const User = require("../models/user.model");
+const { getSignedImageUrl, deleteCachedImage } = require("../config/aws-cdn");
 
 router.post(
   "/",
@@ -79,7 +80,10 @@ router.get("/:postId", authMiddleware, async (req, res) => {
   }
 
   const key = postData.media[0].key;
-  const url = await fetchImageFromS3(key);
+  // const url = await fetchImageFromS3(key);
+
+  // using cdn, and getting signed url from there
+  const url = getSignedImageUrl(key);
   return ok(res, "Fetched post", url);
 });
 
@@ -97,6 +101,9 @@ router.delete("/:postId", authMiddleware, async (req, res) => {
     }
 
     await Promise.all(post.media.map((media) => deleteImageFromS3(media.key)));
+
+    // invalidate the cloudfront cache for that image
+    await Promise.all(post.media.map((media) => deleteCachedImage(media.key)));
 
     await post.deleteOne();
 
