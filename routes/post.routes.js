@@ -167,4 +167,36 @@ router.delete("/:postId", authMiddleware, async (req, res) => {
   }
 });
 
+router.patch("/:postId/like", authMiddleware, async (req, res) => {
+  const postId = req.params.postId;
+  const userId = req.user._id;
+
+  const post = await Post.findById(postId).populate("user", "followers");
+  if (!post) {
+    return fail(res, 404, "Post not found");
+  }
+
+  const isFollowing = post.user.followers.some(
+    (id) => id.toString() === userId.toString(),
+  );
+  if (!isFollowing) {
+    return fail(res, 403, "You don't follow this user");
+  }
+
+  const alreadyLiked = post.likes.some(
+    (id) => id.toString() === userId.toString(),
+  );
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    alreadyLiked
+      ? { $pull: { likes: userId } }
+      : { $addToSet: { likes: userId } },
+    { new: true },
+  );
+
+  return ok(res, alreadyLiked ? "Post unliked" : "Post liked", {
+    likes: updatedPost.likes.length,
+  });
+});
+
 module.exports = router;
