@@ -199,4 +199,160 @@ router.patch("/:postId/like", authMiddleware, async (req, res) => {
   });
 });
 
+router.post("/:postId/comments", authMiddleware, async (req, res) => {
+  const postId = req.params.postId;
+  const userId = req.user._id;
+  const text = req.body.text;
+
+  if (!text) return fail(res, 400, "Comment text is required");
+
+  // const isFollowing = post.user.followers.some(
+  //   (id) => id.toString() === userId.toString(),
+  // );
+  // if (!isFollowing) {
+  //   return fail(res, 403, "You don't follow this user");
+  // }
+
+  // const post = await Post.findByIdAndUpdate(
+  //   postId,
+  //   { $push: { comments: newComment } },
+  //   { new: true },
+  // );
+
+  const post = await Post.findById(postId).populate(
+    "user",
+    "followers isPrivate",
+  );
+
+  const isOwner = post.user._id.toString() === userId.toString();
+
+  const isFollowing = post.user.followers.some(
+    (id) => id.toString() === userId.toString(),
+  );
+
+  if (post.user.isPrivate && !isOwner && !isFollowing) {
+    return fail(res, 403, "You cannot comment on this post");
+  }
+
+  post.comments.push({
+    user: userId,
+    text,
+  });
+
+  await post.save();
+
+  return ok(
+    res,
+    "Comment added",
+    { comment: post.comments[post.comments.length - 1] },
+    201,
+  );
+});
+
+router.post(
+  "/:postId/comments/:commentId/replies",
+  authMiddleware,
+  async (req, res) => {
+    const { postId, commentId } = req.params;
+    const userId = req.user._id;
+    const { text } = req.body;
+
+    if (!text) {
+      return fail(res, 400, "Reply text is required");
+    }
+
+    const post = await Post.findOneAndUpdate(
+      { _id: postId, "comments._id": commentId },
+      {
+        $push: {
+          "comments.$.replies": {
+            user: userId,
+            text,
+          },
+        },
+      },
+      { new: true },
+    );
+
+    if (!post) {
+      return fail(res, 404, "Post or comment not found");
+    }
+
+    const comment = post.comments.id(commentId);
+
+    return ok(
+      res,
+      "Reply added",
+      {
+        reply: comment.replies[comment.replies.length - 1],
+      },
+      201,
+    );
+  },
+);
+
+// router.delete(
+//   "/:postId/comments/:commentId",
+//   authMiddleware,
+//   async (req, res) => {
+//     const { postId, commentId } = req.params;
+//     const userId = req.user._id;
+
+//     const post = await Post.findById(postId);
+
+//     if (!post) {
+//       return fail(res, 404, "Post not found");
+//     }
+
+//     const comment = post.comments.id(commentId);
+
+//     if (!comment) {
+//       return fail(res, 404, "Comment not found");
+//     }
+
+//     const isCommentOwner = comment.user.toString() === userId.toString();
+
+//     const isPostOwner = post.user.toString() === userId.toString();
+
+//     if (!isCommentOwner && !isPostOwner) {
+//       return fail(res, 403, "Not authorized");
+//     }
+
+//     // const comment = post.comments.id(commentId);
+//     comment.deleteOne();
+
+//     await post.save();
+
+//     return ok(res, "Comment deleted");
+//   },
+// );
+
+// efficient comment delete
+
+router.delete(
+  "/:postId/comments/:commentId",
+  authMiddleware,
+  async (req, res) => {
+    const { postId, commentId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findOneAndUpdate(
+      {
+        _id: postId,
+        $or: [
+          { user: userId }, // post owner
+          { "comments._id": commentId, "comments.user": userId }, // comment owner
+        ],
+      },
+      {
+        $pull: {
+          comments: { _id: commentId },
+        },
+      },
+      { new: true },
+    );
+    return ok(res, "Comment deleted");
+  },
+);
+
 module.exports = router;
