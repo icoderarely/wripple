@@ -14,6 +14,7 @@ const { ok, fail } = require("../utils/response");
 const Post = require("../models/post.model");
 const User = require("../models/user.model");
 const { getSignedImageUrl, deleteCachedImage } = require("../config/aws-cdn");
+const { default: z } = require("zod");
 
 router.post(
   "/",
@@ -55,6 +56,58 @@ router.post(
     return ok(res, "Post(s) uploaded Successfully", newPost, 201);
   },
 );
+
+router.get("/my-posts", authMiddleware, async (req, res) => {
+  // pagination: /my-posts?page=2&limit=5
+  const paginationSchema = z.object({
+    page: z.coerce.number().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(2),
+  });
+  const { page, limit } = paginationSchema.parse(req.query);
+
+  const totalPosts = await Post.countDocuments({ user: req.user._id });
+
+  const posts = await Post.find({ user: req.user._id }) // Find posts belonging to the logged-in user
+    .sort({ createdAt: -1 }) // newest first
+    .skip((page - 1) * limit) // Skip records from previous pages
+    .limit(limit) // Return only 'limit' number of posts
+    .lean(); // Convert Mongoose documents to plain JS objects (faster, less memory)
+
+  const hasNextPage = page * limit < totalPosts;
+
+  return ok(res, "My posts", { posts, page, limit, hasNextPage });
+});
+
+router.get("/following", authMiddleware, async (req, res) => {
+  const paginationSchema = z.object({
+    limit: z.coerce.number().min(1).max(100).default(2),
+    cursor: z.coerce.date().optional(),
+  });
+
+  const { limit, cursor } = paginationSchema.parse(req.query);
+
+  const user = await User.findById(req.user._id).select("following");
+
+  const query = {
+    user: { $in: user.following },
+  };
+
+  // if cursor exists, fetch posts older than cursor
+  if (cursor) {
+    query.createdAt = { $lt: cursor };
+  }
+
+  const posts = await Post.find(query)
+    .populate("user", "_id username profileName")
+    .sort({ createdAt: -1 }) // newest first
+    .limit(limit)
+    .lean();
+
+  const nextCursor =
+    posts.length === limit ? posts[posts.length - 1].createdAt : null;
+
+  return ok(res, "posts fetched", { posts, nextCursor });
+});
 
 router.get("/:postId", authMiddleware, async (req, res) => {
   const postId = req.params.postId;
